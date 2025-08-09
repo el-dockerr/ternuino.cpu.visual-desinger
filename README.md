@@ -13,6 +13,8 @@ For more information about Ternuino and ternary computing please go to [ternuino
 - JSON design format to declare components and wires.
 - GUI editor/viewer to place components, wire ports, toggle switches, and step the simulation.
 
+![Ternuino CPU Desginer Screenshot ](assets/screenshot.png)
+
 ## Quick Start
 
 1) Requirements: Python 3.9+.
