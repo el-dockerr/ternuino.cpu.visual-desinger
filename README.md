@@ -13,7 +13,7 @@ For more information about Ternuino and ternary computing please go to [ternuino
 - JSON design format to declare components and wires.
 - GUI editor/viewer to place components, wire ports, toggle switches, and step the simulation.
 
-![Ternuino CPU Desginer Screenshot ](assets/screenshot.png)
+![Ternuino CPU Desginer Screenshot ](assets/screenshot-v1.png)
 
 ## Quick Start
 
