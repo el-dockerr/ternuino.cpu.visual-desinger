@@ -1,0 +1,144 @@
+{
+  "name": "Exported",
+  "version": 1,
+  "components": [
+    {
+      "id": "sw1",
+      "type": "SwitchTernary",
+      "params": {
+        "value": 1
+      }
+    },
+    {
+      "id": "sw2",
+      "type": "SwitchTernary",
+      "params": {
+        "value": -1
+      }
+    },
+    {
+      "id": "sw3",
+      "type": "SwitchTernary",
+      "params": {
+        "value": 1
+      }
+    },
+    {
+      "id": "g1",
+      "type": "TAND",
+      "params": {}
+    },
+    {
+      "id": "g2",
+      "type": "TNOR",
+      "params": {}
+    },
+    {
+      "id": "t1",
+      "type": "Transistor",
+      "params": {}
+    },
+    {
+      "id": "l1",
+      "type": "TLatch",
+      "params": {}
+    },
+    {
+      "id": "p1",
+      "type": "Probe",
+      "params": {}
+    }
+  ],
+  "wires": [
+    {
+      "from": {
+        "componentId": "sw1",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "g1",
+        "port": "in1"
+      }
+    },
+    {
+      "from": {
+        "componentId": "sw2",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "g1",
+        "port": "in2"
+      }
+    },
+    {
+      "from": {
+        "componentId": "g1",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "t1",
+        "port": "presence"
+      }
+    },
+    {
+      "from": {
+        "componentId": "sw1",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "t1",
+        "port": "sign"
+      }
+    },
+    {
+      "from": {
+        "componentId": "t1",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "g2",
+        "port": "in1"
+      }
+    },
+    {
+      "from": {
+        "componentId": "sw2",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "g2",
+        "port": "in2"
+      }
+    },
+    {
+      "from": {
+        "componentId": "g2",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "l1",
+        "port": "in"
+      }
+    },
+    {
+      "from": {
+        "componentId": "sw1",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "l1",
+        "port": "enable"
+      }
+    },
+    {
+      "from": {
+        "componentId": "l1",
+        "port": "out"
+      },
+      "to": {
+        "componentId": "p1",
+        "port": "in"
+      }
+    }
+  ]
+}
