@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 import json
 from PySide6 import QtCore, QtGui, QtWidgets
 from .core.logic import Circuit, COMPONENT_REGISTRY, SwitchBinary, SwitchTernary, Probe
@@ -17,12 +17,13 @@ class Canvas(QtWidgets.QWidget):
         # state
         self.circuit = Circuit()
         self.positions: Dict[str, QtCore.QPointF] = {}
-        self.port_map: Dict[Tuple[str, str], QtCore.QRectF] = {}
+        self.port_map: Dict[tuple[str, str], QtCore.QRectF] = {}
         self.dragging: Optional[str] = None
         self.drag_offset: Optional[QtCore.QPointF] = None
-        self.wire_start: Optional[Tuple[str, str]] = None
+        self.wire_start: Optional[tuple[str, str]] = None
         self.pending_add: Optional[str] = None
         self.selected: Optional[str] = None
+        self.unwired: Dict[str, list[str]] = {}
 
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(1200, 800)
@@ -32,7 +33,7 @@ class Canvas(QtWidgets.QWidget):
         cls = COMPONENT_REGISTRY[ctype]
         comp = cls(cid, 0) if ctype.startswith("Switch") else cls(cid)
         self.circuit.add(comp)
-        self.positions[cid] = pos
+        self.positions[cid] = QtCore.QPointF(pos)
         self.update()
 
     def set_add_mode(self, ctype: Optional[str]):
@@ -62,7 +63,79 @@ class Canvas(QtWidgets.QWidget):
                 if x > 1000:
                     x = 100
                     y += 120
+        # validate on load
+        self.validate_wiring()
         self.update()
+
+    def auto_arrange(self):
+        # Build graph
+        comps = list(self.circuit.components.keys())
+        out_edges: Dict[str, set[str]] = {c: set() for c in comps}
+        in_deg: Dict[str, int] = {c: 0 for c in comps}
+        for w in self.circuit.wires:
+            if w.src_comp in out_edges and w.dst_comp in in_deg:
+                if w.dst_comp not in out_edges[w.src_comp]:
+                    out_edges[w.src_comp].add(w.dst_comp)
+                    in_deg[w.dst_comp] += 1
+        # Kahn's algorithm to assign levels
+        from collections import deque, defaultdict
+        q = deque([c for c, d in in_deg.items() if d == 0])
+        level: Dict[str, int] = {c: 0 for c in q}
+        while q:
+            u = q.popleft()
+            for v in out_edges[u]:
+                in_deg[v] -= 1
+                if in_deg[v] == 0:
+                    level[v] = max(level.get(v, 0), level.get(u, 0) + 1)
+                    q.append(v)
+        # any remaining nodes (cycle): place after max level
+        max_lvl = max(level.values(), default=0)
+        for c, d in in_deg.items():
+            if d > 0 and c not in level:
+                max_lvl += 1
+                level[c] = max_lvl
+        # group by level
+        by_lvl: Dict[int, list[str]] = defaultdict(list)
+        for cid, lv in level.items():
+            by_lvl[lv].append(cid)
+        # stable order: use existing positions to keep relative nearby
+        for lv in by_lvl:
+            by_lvl[lv].sort()
+        # assign positions
+        x0, y0 = 120, 100
+        xgap, ygap = 200, 120
+        new_pos: Dict[str, QtCore.QPointF] = {}
+        for lv in sorted(by_lvl.keys()):
+            for i, cid in enumerate(by_lvl[lv]):
+                new_pos[cid] = QtCore.QPointF(x0 + lv * xgap, y0 + i * ygap)
+        # include any components that somehow missed (empty graph)
+        for cid in comps:
+            if cid not in new_pos:
+                new_pos[cid] = QtCore.QPointF(x0, y0)
+        self.positions = new_pos
+        self.update()
+
+    def validate_wiring(self) -> Dict[str, list[str]]:
+        incoming = {}
+        outgoing = {}
+        for w in self.circuit.wires:
+            incoming[(w.dst_comp, w.dst_port)] = True
+            outgoing[(w.src_comp, w.src_port)] = True
+        issues: Dict[str, list[str]] = {}
+        for cid, comp in self.circuit.components.items():
+            missing: list[str] = []
+            for p in comp.ports.values():
+                if p.direction == 'in':
+                    if not incoming.get((cid, p.id)):
+                        missing.append(f"in:{p.id}")
+                elif p.direction == 'out':
+                    if not outgoing.get((cid, p.id)):
+                        missing.append(f"out:{p.id}")
+            if missing:
+                issues[cid] = missing
+        self.unwired = issues
+        self.update()
+        return issues
 
     def paintEvent(self, event):
         p = QtGui.QPainter(self)
@@ -82,7 +155,17 @@ class Canvas(QtWidgets.QWidget):
             pos = self.positions.get(cid, QtCore.QPointF(50, 50))
             rect = QtCore.QRectF(pos.x(), pos.y(), COMP_WIDTH, COMP_HEIGHT)
             p.setBrush(QtGui.QColor("#2e2e2e"))
-            p.setPen(QtGui.QPen(QtGui.QColor("#4FC3F7" if cid == self.selected else "#aaa"), 2 if cid == self.selected else 1))
+            # selected > unwired > normal
+            if cid == self.selected:
+                border_color = "#4FC3F7"  # cyan
+                width = 2
+            elif cid in self.unwired:
+                border_color = "#FFC107"  # amber warning
+                width = 2
+            else:
+                border_color = "#aaa"
+                width = 1
+            p.setPen(QtGui.QPen(QtGui.QColor(border_color), width))
             p.drawRoundedRect(rect, 6, 6)
             p.setPen(QtGui.QPen(QtGui.QColor("#fff"), 1))
             p.drawText(rect.adjusted(4, 4, -4, -4), QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop, f"{comp.type}\n{cid}")
@@ -299,6 +382,15 @@ class MainWindow(QtWidgets.QMainWindow):
         del_act.setShortcut(QtGui.QKeySequence.Delete)
         del_act.triggered.connect(self.on_delete)
         tb.addAction(del_act)
+        tb.addSeparator()
+        auto_act = QtGui.QAction("Auto Arrange", self)
+        auto_act.setToolTip("Automatically arrange components by data flow")
+        auto_act.triggered.connect(self.on_auto_arrange)
+        tb.addAction(auto_act)
+        validate_act = QtGui.QAction("Validate Wiring", self)
+        validate_act.setToolTip("Highlight components with missing connections")
+        validate_act.triggered.connect(self.on_validate)
+        tb.addAction(validate_act)
         # editor toolbar wiring
         self.editor.actionLoad.triggered.connect(self.on_load)
         self.editor.actionSave.triggered.connect(self.on_save)
@@ -356,6 +448,11 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.canvas.load_json(text)
             self.editor.set_status("Applied to canvas", ok=True)
+            issues = self.canvas.validate_wiring()
+            if issues:
+                self.statusBar().showMessage(f"Validation: {len(issues)} component(s) with missing connections")
+            else:
+                self.statusBar().showMessage("Validation: all components wired")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Load error", str(e))
             self.editor.set_status("Apply failed", ok=False)
@@ -377,6 +474,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def on_delete(self):
         self.canvas.delete_selected()
+
+    def on_auto_arrange(self):
+        self.canvas.auto_arrange()
+
+    def on_validate(self):
+        issues = self.canvas.validate_wiring()
+        if issues:
+            summary = []
+            max_items = 8
+            for i, (cid, ports) in enumerate(issues.items()):
+                if i >= max_items:
+                    summary.append("...")
+                    break
+                summary.append(f"{cid}: {', '.join(ports)}")
+            QtWidgets.QMessageBox.information(self, "Wiring issues", "\n".join(summary))
+        else:
+            QtWidgets.QMessageBox.information(self, "Wiring", "All components have connections")
 
 
 def run():
