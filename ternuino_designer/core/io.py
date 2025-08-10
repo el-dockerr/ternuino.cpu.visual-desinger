@@ -46,6 +46,8 @@ def dump_circuit_to_json(c: Circuit) -> str:
             entry['params'] = {'value': comp.ports['out'].value}
         elif comp.type == 'SwitchTernary':
             entry['params'] = {'value': comp.ports['out'].value}
+        else:
+            entry['params'] = {}
         comps.append(entry)
 
     wires = []

@@ -95,4 +95,4 @@ python tests/smoke_test.py
 - [ ] More gate types and composite components.
 - [ ] Clocked flip-flops, RAM blocks.
 - [ ] Bus wires and labels.
-- [ ] Validation and auto-layout.
+- [x] Validation and auto-layout.

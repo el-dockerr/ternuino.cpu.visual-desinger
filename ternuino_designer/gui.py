@@ -24,6 +24,8 @@ class Canvas(QtWidgets.QWidget):
         self.pending_add: Optional[str] = None
         self.selected: Optional[str] = None
         self.unwired: Dict[str, list[str]] = {}
+        # Ensure initial virtual canvas size is reasonable for scrolling
+        self.update_extents()
 
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(1200, 800)
@@ -34,6 +36,7 @@ class Canvas(QtWidgets.QWidget):
         comp = cls(cid, 0) if ctype.startswith("Switch") else cls(cid)
         self.circuit.add(comp)
         self.positions[cid] = QtCore.QPointF(pos)
+        self.update_extents()
         self.update()
 
     def set_add_mode(self, ctype: Optional[str]):
@@ -65,6 +68,7 @@ class Canvas(QtWidgets.QWidget):
                     y += 120
         # validate on load
         self.validate_wiring()
+        self.update_extents()
         self.update()
 
     def auto_arrange(self):
@@ -113,6 +117,9 @@ class Canvas(QtWidgets.QWidget):
             if cid not in new_pos:
                 new_pos[cid] = QtCore.QPointF(x0, y0)
         self.positions = new_pos
+        # Update wiring highlights as layout changed
+        self.validate_wiring()
+        self.update_extents()
         self.update()
 
     def validate_wiring(self) -> Dict[str, list[str]]:
@@ -141,15 +148,7 @@ class Canvas(QtWidgets.QWidget):
         p = QtGui.QPainter(self)
         p.fillRect(self.rect(), QtGui.QColor("#1e1e1e"))
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-
-        # wires
-        p.setPen(QtGui.QPen(QtGui.QColor("#888"), 2))
-        for w in self.circuit.wires:
-            a = self.port_center(w.src_comp, w.src_port, True)
-            b = self.port_center(w.dst_comp, w.dst_port, False)
-            p.drawLine(a, b)
-
-        # components
+        # components (populate port_map first so wires use current positions)
         self.port_map.clear()
         for cid, comp in self.circuit.components.items():
             pos = self.positions.get(cid, QtCore.QPointF(50, 50))
@@ -185,6 +184,13 @@ class Canvas(QtWidgets.QWidget):
                 p.drawText(rect.adjusted(4, 24, -4, -4), QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop, f"val={comp.ports['out'].value}")
             if isinstance(comp, Probe):
                 p.drawText(rect.adjusted(4, 24, -4, -4), QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop, f"in={comp.ports['in'].value}")
+
+        # wires (draw after components so endpoints align with current ports)
+        p.setPen(QtGui.QPen(QtGui.QColor("#888"), 2))
+        for w in self.circuit.wires:
+            a = self.port_center(w.src_comp, w.src_port, True)
+            b = self.port_center(w.dst_comp, w.dst_port, False)
+            p.drawLine(a, b)
 
     def draw_port(self, p: QtGui.QPainter, cx: float, cy: float, cid: str, port: str):
         r = QtCore.QRectF(cx - PORT_RADIUS, cy - PORT_RADIUS, PORT_RADIUS * 2, PORT_RADIUS * 2)
@@ -243,6 +249,7 @@ class Canvas(QtWidgets.QWidget):
     def mouseMoveEvent(self, e: QtGui.QMouseEvent):
         if self.dragging:
             self.positions[self.dragging] = e.position() - (self.drag_offset or QtCore.QPointF(0, 0))
+            self.update_extents()
             self.update()
 
     def mouseReleaseEvent(self, e: QtGui.QMouseEvent):
@@ -292,7 +299,24 @@ class Canvas(QtWidgets.QWidget):
         if cid in self.positions:
             del self.positions[cid]
         self.selected = None
+        self.update_extents()
         self.update()
+
+    def update_extents(self, margin: int = 200):
+        # Expand canvas size to fit all components, enabling scrollbars
+        if not self.positions:
+            self.setMinimumSize(QtCore.QSize(1200, 800))
+            return
+        max_right = 0.0
+        max_bottom = 0.0
+        for p in self.positions.values():
+            if p.x() + COMP_WIDTH > max_right:
+                max_right = p.x() + COMP_WIDTH
+            if p.y() + COMP_HEIGHT > max_bottom:
+                max_bottom = p.y() + COMP_HEIGHT
+        w = int(max(max_right + margin, 1200))
+        h = int(max(max_bottom + margin, 800))
+        self.setMinimumSize(QtCore.QSize(w, h))
 
 
 class JsonEditor(QtWidgets.QWidget):
@@ -350,14 +374,19 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.setOrientation(QtCore.Qt.Horizontal)
         self.editor = JsonEditor()
         splitter.addWidget(self.editor)
-        splitter.addWidget(self.canvas)
+        # scroll area wrapping the canvas for scrollbars
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidget(self.canvas)
+        # Keep the canvas' own size driving scrollbars
+        scroll.setWidgetResizable(False)
+        splitter.addWidget(scroll)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([450, 850])
         self.setCentralWidget(splitter)
         # toolbar
         tb = self.addToolBar("Tools")
-        for name in ["SwitchBinary", "SwitchTernary", "TAND", "TNOR", "TNOT", "Transistor", "TLatch", "Probe"]:
+        for name in ["SwitchBinary", "SwitchTernary", "TAND", "TNOR", "TNOT", "Transistor", "TLatch", "Probe", "TFullAdder"]:
             act = QtGui.QAction(name, self)
             act.setToolTip(f"Click, then click on canvas to place a {name}")
             act.triggered.connect(lambda _, n=name: self.on_select_component(n))

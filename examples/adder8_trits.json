@@ -1,0 +1,88 @@
+{
+  "name": "Adder8Trits",
+  "version": 1,
+  "components": [
+    
+    { "id": "a0", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a1", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a2", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a3", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a4", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a5", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a6", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "a7", "type": "SwitchTernary", "params": {"value": 0} },
+
+    { "id": "b0", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b1", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b2", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b3", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b4", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b5", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b6", "type": "SwitchTernary", "params": {"value": 0} },
+    { "id": "b7", "type": "SwitchTernary", "params": {"value": 0} },
+
+    { "id": "c0", "type": "SwitchTernary", "params": {"value": 0} },
+
+    { "id": "fa0", "type": "TFullAdder", "params": {} },
+    { "id": "fa1", "type": "TFullAdder", "params": {} },
+    { "id": "fa2", "type": "TFullAdder", "params": {} },
+    { "id": "fa3", "type": "TFullAdder", "params": {} },
+    { "id": "fa4", "type": "TFullAdder", "params": {} },
+    { "id": "fa5", "type": "TFullAdder", "params": {} },
+    { "id": "fa6", "type": "TFullAdder", "params": {} },
+    { "id": "fa7", "type": "TFullAdder", "params": {} },
+
+    { "id": "s0", "type": "Probe", "params": {} },
+    { "id": "s1", "type": "Probe", "params": {} },
+    { "id": "s2", "type": "Probe", "params": {} },
+    { "id": "s3", "type": "Probe", "params": {} },
+    { "id": "s4", "type": "Probe", "params": {} },
+    { "id": "s5", "type": "Probe", "params": {} },
+    { "id": "s6", "type": "Probe", "params": {} },
+    { "id": "s7", "type": "Probe", "params": {} },
+    { "id": "sc", "type": "Probe", "params": {} }
+  ],
+  "wires": [
+    { "from": {"componentId": "a0", "port": "out"}, "to": {"componentId": "fa0", "port": "ai"} },
+    { "from": {"componentId": "b0", "port": "out"}, "to": {"componentId": "fa0", "port": "bi"} },
+    { "from": {"componentId": "c0", "port": "out"}, "to": {"componentId": "fa0", "port": "ci"} },
+    { "from": {"componentId": "fa0", "port": "so"}, "to": {"componentId": "s0", "port": "in"} },
+
+    { "from": {"componentId": "a1", "port": "out"}, "to": {"componentId": "fa1", "port": "ai"} },
+    { "from": {"componentId": "b1", "port": "out"}, "to": {"componentId": "fa1", "port": "bi"} },
+    { "from": {"componentId": "fa0", "port": "co"}, "to": {"componentId": "fa1", "port": "ci"} },
+    { "from": {"componentId": "fa1", "port": "so"}, "to": {"componentId": "s1", "port": "in"} },
+
+    { "from": {"componentId": "a2", "port": "out"}, "to": {"componentId": "fa2", "port": "ai"} },
+    { "from": {"componentId": "b2", "port": "out"}, "to": {"componentId": "fa2", "port": "bi"} },
+    { "from": {"componentId": "fa1", "port": "co"}, "to": {"componentId": "fa2", "port": "ci"} },
+    { "from": {"componentId": "fa2", "port": "so"}, "to": {"componentId": "s2", "port": "in"} },
+
+    { "from": {"componentId": "a3", "port": "out"}, "to": {"componentId": "fa3", "port": "ai"} },
+    { "from": {"componentId": "b3", "port": "out"}, "to": {"componentId": "fa3", "port": "bi"} },
+    { "from": {"componentId": "fa2", "port": "co"}, "to": {"componentId": "fa3", "port": "ci"} },
+    { "from": {"componentId": "fa3", "port": "so"}, "to": {"componentId": "s3", "port": "in"} },
+
+    { "from": {"componentId": "a4", "port": "out"}, "to": {"componentId": "fa4", "port": "ai"} },
+    { "from": {"componentId": "b4", "port": "out"}, "to": {"componentId": "fa4", "port": "bi"} },
+    { "from": {"componentId": "fa3", "port": "co"}, "to": {"componentId": "fa4", "port": "ci"} },
+    { "from": {"componentId": "fa4", "port": "so"}, "to": {"componentId": "s4", "port": "in"} },
+
+    { "from": {"componentId": "a5", "port": "out"}, "to": {"componentId": "fa5", "port": "ai"} },
+    { "from": {"componentId": "b5", "port": "out"}, "to": {"componentId": "fa5", "port": "bi"} },
+    { "from": {"componentId": "fa4", "port": "co"}, "to": {"componentId": "fa5", "port": "ci"} },
+    { "from": {"componentId": "fa5", "port": "so"}, "to": {"componentId": "s5", "port": "in"} },
+
+    { "from": {"componentId": "a6", "port": "out"}, "to": {"componentId": "fa6", "port": "ai"} },
+    { "from": {"componentId": "b6", "port": "out"}, "to": {"componentId": "fa6", "port": "bi"} },
+    { "from": {"componentId": "fa5", "port": "co"}, "to": {"componentId": "fa6", "port": "ci"} },
+    { "from": {"componentId": "fa6", "port": "so"}, "to": {"componentId": "s6", "port": "in"} },
+
+    { "from": {"componentId": "a7", "port": "out"}, "to": {"componentId": "fa7", "port": "ai"} },
+    { "from": {"componentId": "b7", "port": "out"}, "to": {"componentId": "fa7", "port": "bi"} },
+    { "from": {"componentId": "fa6", "port": "co"}, "to": {"componentId": "fa7", "port": "ci"} },
+    { "from": {"componentId": "fa7", "port": "so"}, "to": {"componentId": "s7", "port": "in"} },
+
+    { "from": {"componentId": "fa7", "port": "co"}, "to": {"componentId": "sc", "port": "in"} }
+  ]
+}

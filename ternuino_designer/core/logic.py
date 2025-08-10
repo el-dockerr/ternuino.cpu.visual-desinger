@@ -172,6 +172,40 @@ class Probe(Component):
         self.last = self.get_in('in')
 
 
+class TFullAdder(Component):
+    """Balanced ternary full adder cell.
+    Ports:
+    - ai, bi, ci (in): input trits in {-1,0,1}
+    - so (out): sum trit in {-1,0,1}
+    - co (out): carry trit in {-1,0,1}
+    Implements: a + b + c = so + 3*co
+    """
+    def __init__(self, id: str):
+        super().__init__(id, 'TFullAdder', {
+            'ai': Port('ai', 'in', 0),
+            'bi': Port('bi', 'in', 0),
+            'ci': Port('ci', 'in', 0),
+            'so': Port('so', 'out', 0),
+            'co': Port('co', 'out', 0),
+        })
+
+    def step(self) -> None:
+        a = self.get_in('ai')
+        b = self.get_in('bi')
+        c = self.get_in('ci')
+        total = a + b + c  # in [-3..3]
+        # nearest integer carry in {-1,0,1}
+        co = int(round(total / 3.0))
+        if co > 1:
+            co = 1
+        elif co < -1:
+            co = -1
+        so = total - 3 * co
+        # clamp for safety
+        self.set_out('co', clamp_t(co))
+        self.set_out('so', clamp_t(so))
+
+
 @dataclass
 class Wire:
     src_comp: str
@@ -238,4 +272,5 @@ COMPONENT_REGISTRY = {
     'Transistor': Transistor,
     'TLatch': TLatch,
     'Probe': Probe,
+    'TFullAdder': TFullAdder,
 }
